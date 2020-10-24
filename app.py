@@ -54,22 +54,53 @@ def home_page():
 
 @app.route("/getData", methods=["GET"])
 def get_crime_data():
-    myDocument = defaultDB.db.crime.find({})
+    myDocument = defaultDB.db.crime.find({},{"_id":0,"Local_Area_Cat":0,"OFNS_DESC_Cat":0,"PERP_RACE_Cat":0,"PERP_SEX_Cat":0})
     data_santized = json.loads(json_util.dumps(myDocument))
     return jsonify(
         data = data_santized
     ) 
 
+@app.route("/get_scenario2_data", methods=["GET"])
+def get_scenario2_data():
+    all_offenses = defaultDB.db.crime.distinct("OFNS_DESC")
+    all_genders = defaultDB.db.crime.distinct("PERP_SEX")
+    all_Local_Area = defaultDB.db.crime.distinct("Local Area")
+    
+    data_santized_offenses = json.loads(json_util.dumps(all_offenses))
+    data_santized_genders = json.loads(json_util.dumps(all_genders))
+    data_santized_area = json.loads(json_util.dumps(all_Local_Area))
+
+   
+    return jsonify(
+        all_offenses = data_santized_offenses,
+        all_genders = data_santized_genders,
+        all_Local_Area = data_santized_area,  
+    ) 
+
+@app.route("/get_scenario2_predicted", methods=["GET"])
+def get_scenario2_predicted():
+    all_predicted = defaultDB.db.predicted_data.find({}).sort('Time',-1)
+    
+    data_santized_predicted = json.loads(json_util.dumps(all_predicted))
+    
+   
+    return jsonify(
+        all_predicted = data_santized_predicted, 
+    ) 
+
+
+
+
 @app.route("/predictSuspectType", methods=["POST"])
 def predict_suspect_type():
+    print("herer")
     req_data = request.get_json()
-        
-
-    crime_type = request.form.get('crimeType')
-    location = request.form.get('location')
-    gender = request.form.get('gender')
     
-
+    crime_type = req_data['crimeType']
+    location = req_data['location']
+    gender = req_data['gender']
+    
+    
     crime_type_cat = defaultDB.db.crime.find_one({'OFNS_DESC':crime_type},{'OFNS_DESC_Cat':1})
     location_cat = defaultDB.db.crime.find_one({'Local Area':location},{'Local_Area_Cat':1})
     gender_cat = defaultDB.db.crime.find_one({'PERP_SEX':gender},{'PERP_SEX_Cat':1})
@@ -127,7 +158,14 @@ def predict_suspect_type():
 
     predicted_race = defaultDB.db.crime.find_one({'PERP_RACE_Cat':predicted_race[0]},{'PERP_RACE':1})
     predicted_race = predicted_race['PERP_RACE']
-    
+
+    ## Saving the data to DB as well
+    now = datetime.now()
+    dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
+
+    mydict = { "Age": round(predicted_age[0],0), "Race": predicted_race, "Time": dt_string }
+
+    x = defaultDB.db.predicted_data.insert_one(mydict)
 
     return jsonify(
         Age = round(predicted_age[0],0),
