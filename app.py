@@ -12,7 +12,7 @@ app.config["DEBUG"]=True
 CORS(app)
 
 ## DB
-defaultDB = PyMongo(app, uri = "mongodb://localhost/test")
+defaultDB = PyMongo(app, uri = "mongodb+srv://client:hacker101@cluster0.bqwku.mongodb.net/test?retryWrites=true&w=majority")
        
 ## Loading up ML models and imports
 import pickle
@@ -171,95 +171,5 @@ def predict_suspect_type():
         Age = round(predicted_age[0],0),
         Race =  predicted_race
     ) 
-
-
-
-
-
-@app.route("/mongodb/collection", methods=["GET"])
-def get_collection_data():
-    # Please rememeber an already user db connection information must exists in our mongo db so that we can make connection and request required Database
-    connect_db = request.args.get('user_db')
-    connect_username = request.args.get('username')
-    connect_collection = request.args.get('collection')
-    try:
-        myDocument = defaultDB.db.user_db_info.find({"username":connect_username})
-        connect_URL = ""
-        for connect_data in myDocument[0]['db_infos']:
-            if(connect_db == connect_data['db_database']):
-                connect_URL = "mongodb://"+ connect_data["db_username"] +":"+ connect_data["db_password"] +"@" + connect_data["db_ipaddress"] +"/"+ connect_data["db_database"] + "?authSource="+ connect_data["db_authSource"]
-                break
-        if connect_URL:
-            mongo1 = PyMongo(app, uri = connect_URL)
-            user_documents =  mongo1.db[connect_collection].find({})
-
-            # keys = []
-            # TODO: Separate All keys and sub keys dynamically in dataset or documents before sending them for preprocessing etc.
-            # for doc in user_documents:
-            
-            #     for key, val in doc.items():
-            #         print(key +" \n")
-            #         print(val)
-            #         if type(val) is dict:
-            #             print("is dict")
-            #         if type(val) is list:
-            #             for x in val:
-            #                 if type(x) is dict:
-            #                     print (x)
-            #                     print("object inside of array list")
-
-            data_santized = json.loads(json_util.dumps(user_documents))
-            return jsonify(
-                data = data_santized
-            ) 
-
-        else:
-            return jsonify(
-                msg="Error connecting to DB"
-            )
-
-    except:
-        return jsonify(msg="no collection information found",msgType="error")
-
-
-    
-
-
-
-
-@app.route("/file-upload", methods=["POST"])
-def file_request():
-    if request.method == "POST":
-        myFile = request.files['input_file']
-        ## defining types of files to accept
-        accept_files = [
-            "text/csv","application/json","text/plain",
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            "application/vnd.ms-excel",
-            ]
-        if(myFile):
-            if (myFile.content_type in accept_files):
-                # TODO perform preprocessing on data like filtering out csv columns etc
-                #upload file
-                msg = upload_file(myFile)
-                if msg['msgType'] == "success":
-                    myFileLoc = msg['fileLocation']
-                    my_dataframe = pd.read_csv(myFileLoc)
-                    
-                    json_data = json.loads(my_dataframe.to_json(orient='records'))
-
-                    return jsonify({"csv_data":json_data})
-                else:
-                    jsonify({"msg":"unable to read"})
-
-            else:
-                return jsonify(
-                    msg="Invalid File type provided! "
-                )
-        else:
-            return jsonify(
-                msg = "Error uploading"
-            )
-
 
 app.run()
