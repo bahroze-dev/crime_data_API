@@ -172,4 +172,4 @@ def predict_suspect_type():
         Race =  predicted_race
     ) 
 
-app.run()
+app.run(host='0.0.0.0', port=4000)
